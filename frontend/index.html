@@ -25,10 +25,9 @@
 <main>
 
   <section class="intro">
-    <h1 id="introHeading">Is this audio a real recording, or was it generated?</h1>
+    <h1 id="introHeading">Is this audio a real recording, or was it synthesised?</h1>
     <p id="introBody">
-      Upload an audio file and VeriTrust runs its ensemble of independent checks. You see each
-      check separately, not just a single number.
+      Upload an audio file and VeriTrust runs an ensemble of independent voice spoofing detectors over overlapping four second windows, so a few cloned seconds spliced into a real recording are not averaged away. You see each check separately, not just a single number.
     </p>
   </section>
 
@@ -36,7 +35,6 @@
 
     <div class="stage-column">
       
-
       <div class="stage">
         <label class="drop" id="drop" for="file" tabindex="0">
           <input type="file" id="file" accept="audio/*" hidden />
@@ -52,18 +50,18 @@
               </svg>
             </div>
             <span class="drop-title" id="dropTitle">Choose an audio file or drop it here</span>
-            <span class="drop-hint" id="dropHint">JPEG, PNG, WebP, BMP, TIFF · up to 20 MB</span>
+            <span class="drop-hint" id="dropHint">WAV, FLAC, OGG, MP3, M4A · up to 40 MB</span>
           </div>
         </label>
 
         <figure class="canvas" id="canvas" hidden>
           <div class="canvas-frame" id="canvasFrame">
-                        <audio id="audioPreview" controls hidden></audio>
-                                  </div>
+            <audio id="audioPreview" controls hidden></audio>
+          </div>
           <figcaption class="canvas-foot">
             <span class="mono" id="imageMeta"></span>
             <span class="canvas-actions">
-                            <button type="button" class="ghost" id="clear">Clear</button>
+              <button type="button" class="ghost" id="clear">Clear</button>
             </span>
           </figcaption>
           <p class="overlay-note" id="overlayNote"></p>
@@ -96,7 +94,7 @@
               <div class="needle" id="needle"><span class="needle-value mono" id="needleValue">0.00</span></div>
             </div>
             <div class="scale-legend mono">
-              <span id="scaleLegendLeft">0.00 recordingic</span>
+              <span id="scaleLegendLeft">0.00 real voice</span>
               <span class="scale-legend-mid">uncertain</span>
               <span id="scaleLegendRight">generated 1.00</span>
             </div>
@@ -115,7 +113,7 @@
           <p class="panel-note" id="signalNote"></p>
         </div>
 
-                <div class="panel" id="notesPanel">
+        <div class="panel" id="notesPanel">
           <span class="eyebrow">Caveats</span>
           <ul class="notes" id="notes"></ul>
         </div>
@@ -145,7 +143,7 @@
         <h3>Missing metadata means nothing.</h3>
         <p>
           Messaging apps and most social platforms strip metadata from real
-          recordings. An image with no history is not suspicious, so VeriTrust does not treat it
+          recordings. An audio file with no history is not suspicious, so VeriTrust does not treat it
           as such.
         </p>
       </div>
