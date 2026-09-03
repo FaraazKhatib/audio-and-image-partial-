@@ -363,7 +363,6 @@ function render(data) {
    file averaged to mono both read as a complete analysis. These come from the response. */
 function renderMediaMeta(data) {
   const media = data.image || {};
-  if (modalityOf(data) !== "audio") return;
 
   const parts = [];
   if (typeof media.duration === "number") parts.push(`${media.duration.toFixed(1)} s analysed`);
@@ -394,7 +393,7 @@ function verdictHeadline(data) {
   if (data.verdict === UNCERTAIN && data.escalated_by) {
     return `Disputed: ${prettyName(data.escalated_by)} reads AI generated`;
   }
-  const dict = modalityOf(data) === "image" ? VERDICT_WORD_IMAGE : VERDICT_WORD_AUDIO;
+  const dict = VERDICT_WORD_AUDIO;
   return dict[data.verdict] || data.verdict;
 }
 

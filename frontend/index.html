@@ -25,10 +25,9 @@
 <main>
 
   <section class="intro">
-    <h1 id="introHeading">Is this image a photograph, or was it generated?</h1>
+    <h1 id="introHeading">Is this audio a real recording, or was it generated?</h1>
     <p id="introBody">
-      Upload an image and VeriTrust runs three independent checks: whole image generation cues,
-      face replacement cues, and any provenance metadata the file still carries. You see each
+      Upload an audio file and VeriTrust runs its ensemble of independent checks. You see each
       check separately, not just a single number.
     </p>
   </section>
@@ -36,26 +35,11 @@
   <section class="workbench">
 
     <div class="stage-column">
-      <div class="tabs" id="mediaModeTabs">
-        <button type="button" class="tab active" data-mode="image">
-          <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-            <rect x="2.5" y="4.5" width="19" height="15" rx="2" />
-            <circle cx="8.5" cy="10.5" r="2" />
-            <path d="M3 17l5.5-5 4 3 3-2.5 5.5 5" />
-          </svg>
-          Image Detector
-        </button>
-        <button type="button" class="tab" data-mode="audio">
-          <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-            <path d="M12 2v20M8 6v12M4 9v6M16 6v12M20 9v6" stroke-linecap="round" />
-          </svg>
-          Audio Detector
-        </button>
-      </div>
+      
 
       <div class="stage">
         <label class="drop" id="drop" for="file" tabindex="0">
-          <input type="file" id="file" accept="image/jpeg,image/png,image/webp,image/bmp,image/tiff" hidden />
+          <input type="file" id="file" accept="audio/*" hidden />
           <div class="drop-inner">
             <div class="drop-icon-wrap" id="dropIconWrap">
               <svg class="drop-icon" id="dropIconImage" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.25" aria-hidden="true">
@@ -67,29 +51,25 @@
                 <path d="M16 4v24M10 8v16M4 12v8M22 8v16M28 12v8" stroke-linecap="round" />
               </svg>
             </div>
-            <span class="drop-title" id="dropTitle">Choose an image or drop it here</span>
+            <span class="drop-title" id="dropTitle">Choose an audio file or drop it here</span>
             <span class="drop-hint" id="dropHint">JPEG, PNG, WebP, BMP, TIFF · up to 20 MB</span>
           </div>
         </label>
 
         <figure class="canvas" id="canvas" hidden>
           <div class="canvas-frame" id="canvasFrame">
-            <img id="preview" alt="Media being analysed" />
-            <audio id="audioPreview" controls hidden></audio>
-            <img id="heat" alt="" hidden />
-            <div class="boxes" id="boxes" aria-hidden="true"></div>
-          </div>
+                        <audio id="audioPreview" controls hidden></audio>
+                                  </div>
           <figcaption class="canvas-foot">
             <span class="mono" id="imageMeta"></span>
             <span class="canvas-actions">
-              <button type="button" class="ghost" id="toggleHeat" hidden>Show attention map</button>
-              <button type="button" class="ghost" id="clear">Clear</button>
+                            <button type="button" class="ghost" id="clear">Clear</button>
             </span>
           </figcaption>
           <p class="overlay-note" id="overlayNote"></p>
         </figure>
 
-        <button type="button" class="run" id="run" disabled>Analyse image</button>
+        <button type="button" class="run" id="run" disabled>Analyse audio</button>
         <p class="stage-note" id="stageNote" role="status" aria-live="polite"></p>
       </div>
     </div>
@@ -116,7 +96,7 @@
               <div class="needle" id="needle"><span class="needle-value mono" id="needleValue">0.00</span></div>
             </div>
             <div class="scale-legend mono">
-              <span id="scaleLegendLeft">0.00 photographic</span>
+              <span id="scaleLegendLeft">0.00 recordingic</span>
               <span class="scale-legend-mid">uncertain</span>
               <span id="scaleLegendRight">generated 1.00</span>
             </div>
@@ -135,12 +115,7 @@
           <p class="panel-note" id="signalNote"></p>
         </div>
 
-        <div class="panel" id="provPanel">
-          <span class="eyebrow">Provenance</span>
-          <ul class="evidence" id="evidence"></ul>
-        </div>
-
-        <div class="panel" id="notesPanel">
+                <div class="panel" id="notesPanel">
           <span class="eyebrow">Caveats</span>
           <ul class="notes" id="notes"></ul>
         </div>
@@ -169,16 +144,15 @@
       <div class="limit">
         <h3>Missing metadata means nothing.</h3>
         <p>
-          Screenshots, messaging apps and most social platforms strip metadata from real
-          photographs. An image with no history is not suspicious, so VeriTrust does not treat it
+          Messaging apps and most social platforms strip metadata from real
+          recordings. An image with no history is not suspicious, so VeriTrust does not treat it
           as such.
         </p>
       </div>
       <div class="limit">
         <h3>Recompression destroys the signal.</h3>
         <p>
-          These detectors read fine grained texture and frequency traces. Screenshotting, resizing
-          and repeated JPEG saves erode exactly those traces, which pushes results toward
+          These detectors read fine grained texture and frequency traces. Transcoding and aggressive audio compression erode exactly those traces, which pushes results toward
           uncertain.
         </p>
       </div>
