@@ -1,0 +1,40 @@
+{
+  "_comment": [
+    "Copy this file to models.local.json to add checkpoints that live on disk rather than on the",
+    "Hugging Face Hub. Only the models list is read; this key is ignored.",
+    "",
+    "Each path must be a directory in Hugging Face layout: config.json, the weights",
+    "(model.safetensors or pytorch_model.bin) and preprocessor_config.json. A relative path is",
+    "resolved against backend/. Nothing is downloaded and nothing is guessed: a path that does not",
+    "exist is reported through /api/v1/models and the ensemble runs without it.",
+    "",
+    "kind is 'synthetic' for whole image models or 'face' for models that expect a face crop.",
+    "weight is a prior only. It is not a measured quantity and does not imply the model has been",
+    "evaluated. Set fake_index only if the checkpoint's labels are generic, for example LABEL_0,",
+    "and only after confirming the class order against known samples: guessing it silently inverts",
+    "every prediction."
+  ],
+  "models": [
+    {
+      "key": "detect_world",
+      "path": "weights/detect-world",
+      "kind": "synthetic",
+      "weight": 1.0,
+      "notes": "Private checkpoint. Unevaluated here."
+    },
+    {
+      "key": "detect_2b",
+      "path": "weights/detect-2b",
+      "kind": "synthetic",
+      "weight": 1.0,
+      "notes": "Private checkpoint. Unevaluated here."
+    },
+    {
+      "key": "detect_3b_omni",
+      "path": "weights/detect-3b-omni",
+      "kind": "face",
+      "weight": 1.0,
+      "notes": "Private checkpoint. Unevaluated here."
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+# Web layer. Exact pins, these resolve cleanly on Python 3.13.
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+pydantic==2.10.4
+
+# ML and imaging. Floors rather than exact pins: torch published no cp313 wheels before 2.6, and
+# the working combination depends on your Python and CUDA build. Capture what actually installed
+# with `pip freeze > requirements.lock.txt` once the app runs.
+#
+# torchvision is required even though nothing here imports it. transformers routes
+# AutoImageProcessor through torchvision for its fast image processing path, so without it every
+# checkpoint fails to load with an ImportError. safetensors is absent on purpose; it arrives via
+# transformers.
+torch>=2.6
+torchvision>=0.21
+transformers>=4.48
+pillow>=11.0
+numpy>=2.1
+opencv-python-headless>=4.10
+
+# Only used by eval/calibrate.py. Not needed to serve requests.
+scikit-learn>=1.6
+
+# Audio decoding and resampling. Nothing here uses librosa or torchaudio; audio.py imports these
+# three directly, each inside the function that needs it, so a missing one degrades to a named
+# rejection instead of an ImportError at startup.
+#
+# soundfile reads WAV, FLAC and OGG. The stdlib wave module covers PCM WAV only and is the fallback
+# when soundfile is absent, which is why a plain 16 bit WAV still works on a bare install.
+#
+# av (PyAV) is the only decoder here for MP3, M4A and the other compressed containers. Without it
+# those uploads are refused, and the message says the decoder is missing rather than claiming the
+# format is unsupported, because those call for different fixes.
+#
+# soxr does the rate conversion to the 16 kHz these checkpoints expect. This is not optional
+# polish: naive decimation aliases high frequency content down into the band the spoofing
+# detectors read, which manufactures exactly the artefacts they are looking for. resample refuses
+# rather than fall back to anything unfiltered.
+#
+# Floors are the versions this actually ran against, not guesses at the oldest release that would
+# work. The previous entry here said soundfile>=0.14.0, which no release satisfies.
+av>=14.0
+soundfile>=0.12.1
+soxr>=1.1
+
+# GPU builds
+#
+# The default PyPI torch wheel for Windows is CPU only, so `pip install -r requirements.txt`
+# alone will run inference on the CPU. To use an NVIDIA GPU, install torch and torchvision
+# together from the PyTorch index first, then this file:
+#
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+#   pip install -r requirements.txt
+#
+# Install both in that one command. torchvision pins an exact torch version, so pulling it from
+# PyPI afterwards can silently replace a CUDA torch with a CPU one. Doing them together, before
+# this file, leaves pip nothing to change.
+#
+# Check the current CUDA tag with the selector at https://pytorch.org/get-started/locally/
+# before running that, since the available builds change over time. Confirm the result with:
+#
+#   python -c "import torch; print(torch.__version__, torch.version.cuda)"

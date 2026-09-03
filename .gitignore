@@ -1,0 +1,31 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.hdf5
+*.pt
+*.pth
+*.pkl
+*.onnx
+*.safetensors
+*.bin
+.env
+.DS_Store
+
+backend/calibration.json
+backend/models.local.json
+backend/.cache/
+eval_results/
+
+# The eval set layout is worth committing, the images in it are not. Blanket ignoring the directory
+# would stop git descending into it at all, which is why this excludes contents and re-includes the
+# directories and their placeholders instead.
+backend/eval_data/**
+!backend/eval_data/**/
+!backend/eval_data/**/.gitkeep
+
+# Editors and OS. The repo commits no editor configuration, so these are always noise.
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini

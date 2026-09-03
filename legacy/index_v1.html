@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VeriTrust — AI Misinformation Detector</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── CSS Variables ── */
+    :root {
+      --bg:        #080c10;
+      --bg2:       #0d1318;
+      --bg3:       #111820;
+      --border:    rgba(255,255,255,0.07);
+      --border2:   rgba(255,255,255,0.13);
+      --text:      #e8edf3;
+      --text-dim:  #6b7a8d;
+      --text-mid:  #9aa5b4;
+      --accent:    #00e5ff;
+      --accent2:   #0090ff;
+      --fake:      #ff3b5c;
+      --fake-dim:  rgba(255,59,92,0.12);
+      --real:      #00e5a0;
+      --real-dim:  rgba(0,229,160,0.12);
+      --warn:      #ffb800;
+      --radius:    12px;
+      --radius-lg: 20px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Animated background grid ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      top: -40%;
+      left: -20%;
+      width: 80%;
+      height: 80%;
+      background: radial-gradient(ellipse, rgba(0,144,255,0.06) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+      animation: pulse-bg 8s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulse-bg {
+      from { transform: scale(1) translateX(0); }
+      to   { transform: scale(1.1) translateX(5%); }
+    }
+
+    /* ── Layout ── */
+    .page-wrap {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 28px 0 48px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      position: relative;
+    }
+
+    .logo-icon svg { width: 36px; height: 36px; }
+
+    .logo-text {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 22px;
+      letter-spacing: -0.5px;
+      color: #fff;
+    }
+
+    .logo-text span {
+      color: var(--accent);
+    }
+
+    .header-badge {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--accent);
+      border: 1px solid rgba(0,229,255,0.3);
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: rgba(0,229,255,0.05);
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      text-align: center;
+      padding: 20px 0 60px;
+    }
+
+    .hero-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 20px;
+      opacity: 0;
+      animation: fadeUp 0.6s ease forwards 0.1s;
+    }
+
+    .hero h1 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: clamp(36px, 6vw, 64px);
+      line-height: 1.05;
+      letter-spacing: -2px;
+      color: #fff;
+      margin-bottom: 20px;
+      opacity: 0;
+      animation: fadeUp 0.6s ease forwards 0.2s;
+    }
+
+    .hero h1 .gradient-text {
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      max-width: 560px;
+      margin: 0 auto 40px;
+      color: var(--text-mid);
+      font-size: 16px;
+      line-height: 1.7;
+      opacity: 0;
+      animation: fadeUp 0.6s ease forwards 0.3s;
+    }
+
+    /* ── Stats row ── */
+    .stats-row {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      opacity: 0;
+      animation: fadeUp 0.6s ease forwards 0.4s;
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat-num {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 28px;
+      color: var(--accent);
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+
+    .stat-divider {
+      width: 1px;
+      background: var(--border2);
+      align-self: stretch;
+    }
+
+    /* ── Tab switcher ── */
+    .tab-wrap {
+      display: flex;
+      gap: 4px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 5px;
+      margin: 0 auto 40px;
+      width: fit-content;
+      opacity: 0;
+      animation: fadeUp 0.6s ease forwards 0.5s;
+    }
+
+    .tab-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 24px;
+      border: none;
+      border-radius: calc(var(--radius-lg) - 4px);
+      background: transparent;
+      color: var(--text-dim);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      white-space: nowrap;
+    }
+
+    .tab-btn:hover { color: var(--text); }
+
+    .tab-btn.active {
+      background: rgba(0,229,255,0.1);
+      color: var(--accent);
+      border: 1px solid rgba(0,229,255,0.2);
+    }
+
+    .tab-btn svg { width: 16px; height: 16px; }
+
+    /* ── Main panel ── */
+    .main-panel {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      opacity: 0;
+      animation: fadeUp 0.6s ease forwards 0.6s;
+    }
+
+    .panel-section {
+      display: none;
+      padding: 36px;
+    }
+
+    .panel-section.active { display: block; }
+
+    /* ── Text section ── */
+    .input-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+    }
+
+    .textarea-wrap {
+      position: relative;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 200px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      padding: 16px 18px;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    textarea::placeholder { color: var(--text-dim); }
+    textarea:focus { border-color: rgba(0,229,255,0.4); }
+
+    .char-count {
+      position: absolute;
+      bottom: 12px;
+      right: 14px;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .example-strip {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 14px 0 24px;
+    }
+
+    .example-chip {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      padding: 5px 12px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: transparent;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .example-chip:hover {
+      border-color: rgba(0,229,255,0.3);
+      color: var(--accent);
+    }
+
+    .analyze-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, rgba(0,229,255,0.15), rgba(0,144,255,0.15));
+      border: 1px solid rgba(0,229,255,0.3);
+      border-radius: var(--radius);
+      color: var(--accent);
+      font-family: 'Syne', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .analyze-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(0,229,255,0.2), rgba(0,144,255,0.2));
+      opacity: 0;
+      transition: opacity 0.25s;
+    }
+
+    .analyze-btn:hover::before { opacity: 1; }
+    .analyze-btn:hover { border-color: rgba(0,229,255,0.6); box-shadow: 0 0 24px rgba(0,229,255,0.15); }
+    .analyze-btn:active { transform: scale(0.99); }
+    .analyze-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .analyze-btn svg { width: 18px; height: 18px; }
+
+    /* ── Image drop zone ── */
+    .dropzone {
+      border: 2px dashed var(--border2);
+      border-radius: var(--radius-lg);
+      padding: 60px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      background: var(--bg3);
+      position: relative;
+    }
+
+    .dropzone:hover, .dropzone.drag-over {
+      border-color: rgba(0,229,255,0.4);
+      background: rgba(0,229,255,0.03);
+    }
+
+    .dropzone-icon {
+      width: 56px;
+      height: 56px;
+      background: rgba(0,229,255,0.08);
+      border: 1px solid rgba(0,229,255,0.15);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+    }
+
+    .dropzone-icon svg { width: 26px; height: 26px; color: var(--accent); }
+
+    .dropzone h3 {
+      font-family: 'Syne', sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .dropzone p {
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+
+    .dropzone p span { color: var(--accent); cursor: pointer; }
+
+    #fileInput { display: none; }
+
+    .preview-wrap {
+      display: none;
+      margin-top: 24px;
+      position: relative;
+    }
+
+    .preview-wrap.show { display: block; }
+
+    .preview-img-box {
+      width: 100%;
+      max-height: 340px;
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      position: relative;
+    }
+
+    .preview-img-box img {
+      width: 100%;
+      height: 100%;
+      max-height: 340px;
+      object-fit: contain;
+      background: var(--bg3);
+      display: block;
+    }
+
+    .remove-img {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 32px;
+      height: 32px;
+      background: rgba(8,12,16,0.8);
+      border: 1px solid var(--border2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text-mid);
+      backdrop-filter: blur(4px);
+      transition: all 0.2s;
+    }
+    .remove-img:hover { color: var(--fake); border-color: var(--fake); }
+    .remove-img svg { width: 14px; height: 14px; }
+
+    /* ── Results panel ── */
+    .result-panel {
+      margin-top: 28px;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      display: none;
+    }
+
+    .result-panel.show { display: block; }
+
+    .result-header {
+      padding: 24px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .result-header.fake  { background: var(--fake-dim); }
+    .result-header.real  { background: var(--real-dim); }
+
+    .verdict-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .verdict-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      animation: blink 1.4s ease-in-out infinite;
+    }
+
+    .fake .verdict-dot { background: var(--fake); box-shadow: 0 0 8px var(--fake); }
+    .real .verdict-dot { background: var(--real); box-shadow: 0 0 8px var(--real); }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.4; }
+    }
+
+    .verdict-label {
+      font-family: 'Syne', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .fake .verdict-label { color: var(--fake); }
+    .real .verdict-label { color: var(--real); }
+
+    .verdict-conf {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      color: var(--text-mid);
+    }
+
+    .confidence-display {
+      font-family: 'Syne', sans-serif;
+      font-size: 36px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .fake .confidence-display { color: var(--fake); }
+    .real .confidence-display { color: var(--real); }
+
+    .result-body {
+      padding: 24px 28px;
+      background: var(--bg2);
+    }
+
+    .score-bars {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .score-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .score-row-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      width: 48px;
+      flex-shrink: 0;
+    }
+
+    .score-row-label.fake-label { color: var(--fake); }
+    .score-row-label.real-label { color: var(--real); }
+
+    .bar-track {
+      flex: 1;
+      height: 8px;
+      background: var(--bg3);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+      width: 0%;
+    }
+
+    .bar-fill.fake-bar { background: linear-gradient(90deg, #ff3b5c, #ff6b6b); }
+    .bar-fill.real-bar { background: linear-gradient(90deg, #00e5a0, #00c8f8); }
+
+    .bar-val {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: var(--text-mid);
+      width: 44px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .result-meta {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .meta-chip {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      padding: 5px 12px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      color: var(--text-dim);
+      background: var(--bg3);
+    }
+
+    /* ── Loading spinner ── */
+    .spinner-wrap {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 32px;
+      color: var(--text-dim);
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+    }
+
+    .spinner-wrap.show { display: flex; }
+
+    .spinner {
+      width: 22px;
+      height: 22px;
+      border: 2px solid var(--border2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ── Error state ── */
+    .error-msg {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 18px;
+      background: rgba(255,59,92,0.08);
+      border: 1px solid rgba(255,59,92,0.2);
+      border-radius: var(--radius);
+      color: var(--fake);
+      font-size: 13px;
+      margin-top: 16px;
+    }
+
+    .error-msg.show { display: flex; }
+    .error-msg svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+    /* ── How it works section ── */
+    .how-section {
+      margin-top: 80px;
+      opacity: 0;
+      animation: fadeUp 0.6s ease forwards 0.8s;
+    }
+
+    .section-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 28px;
+      letter-spacing: -0.5px;
+      color: #fff;
+      margin-bottom: 40px;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    .info-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      transition: border-color 0.25s;
+    }
+
+    .info-card:hover { border-color: var(--border2); }
+
+    .card-icon {
+      width: 44px;
+      height: 44px;
+      background: rgba(0,229,255,0.07);
+      border: 1px solid rgba(0,229,255,0.12);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 18px;
+      color: var(--accent);
+    }
+
+    .card-icon svg { width: 22px; height: 22px; }
+
+    .card-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 16px;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .card-body {
+      font-size: 13px;
+      color: var(--text-dim);
+      line-height: 1.7;
+    }
+
+    .card-mono {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--accent);
+      margin-top: 14px;
+      padding: 6px 10px;
+      background: rgba(0,229,255,0.05);
+      border-radius: 6px;
+      display: inline-block;
+    }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: 80px;
+      padding: 32px 0;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .footer-logo {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 16px;
+      color: var(--text-mid);
+    }
+
+    .footer-logo span { color: var(--accent); }
+
+    footer p {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .stats-row { gap: 20px; }
+      .stat-num  { font-size: 22px; }
+      .panel-section { padding: 24px; }
+      .result-header { flex-direction: column; align-items: flex-start; }
+      footer { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-wrap">
+
+  <!-- ── Header ── -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="36" height="36" rx="10" fill="rgba(0,229,255,0.08)" stroke="rgba(0,229,255,0.2)" stroke-width="1"/>
+          <path d="M18 8L26 12V20C26 24.4 22.4 28 18 28C13.6 28 10 24.4 10 20V12L18 8Z" stroke="#00e5ff" stroke-width="1.5" fill="none"/>
+          <path d="M14.5 18.5L17 21L21.5 16" stroke="#00e5ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="logo-text">Veri<span>Trust</span></div>
+    </div>
+    <div class="header-badge">AI Detector v2.0</div>
+  </header>
+
+  <!-- ── Hero ── -->
+  <section class="hero">
+    <div class="hero-label">Powered by EfficientNetV2 + Stacking Classifier</div>
+    <h1>Detect Fake News &amp;<br /><span class="gradient-text">Deepfake Images</span></h1>
+    <p>Advanced AI models trained on 140K+ images and 10K+ news articles to expose misinformation with 99.6% accuracy.</p>
+
+    <div class="stats-row">
+      <div class="stat">
+        <div class="stat-num">99.6%</div>
+        <div class="stat-label">Text Accuracy</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <div class="stat-num">140K+</div>
+        <div class="stat-label">Images Trained</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <div class="stat-num">&lt;2s</div>
+        <div class="stat-label">Analysis Time</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Tab Switcher ── -->
+  <div class="tab-wrap">
+    <button class="tab-btn active" id="tabText" onclick="switchTab('text')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>
+      Fake News Detector
+    </button>
+    <button class="tab-btn" id="tabImage" onclick="switchTab('image')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg>
+      Deepfake Detector
+    </button>
+  </div>
+
+  <!-- ── Main Panel ── -->
+  <div class="main-panel">
+
+    <!-- TEXT SECTION -->
+    <div class="panel-section active" id="sectionText">
+      <div class="input-label">Paste article text or headline</div>
+
+      <div class="textarea-wrap">
+        <textarea
+          id="newsText"
+          placeholder="Paste news article text, headline, or any content you want to verify for authenticity..."
+          oninput="updateCharCount()"
+        ></textarea>
+        <div class="char-count" id="charCount">0 chars</div>
+      </div>
+
+      <div class="example-strip">
+        <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-dim);align-self:center;">Try:</span>
+        <button class="example-chip" onclick="loadExample('fake1')">🔴 Fake example</button>
+        <button class="example-chip" onclick="loadExample('real1')">🟢 Real example</button>
+        <button class="example-chip" onclick="loadExample('fake2')">🔴 Conspiracy</button>
+      </div>
+
+      <button class="analyze-btn" id="textAnalyzeBtn" onclick="analyzeText()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+        Analyze Text
+      </button>
+
+      <div class="error-msg" id="textError">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span id="textErrorMsg">An error occurred</span>
+      </div>
+
+      <div class="spinner-wrap" id="textSpinner">
+        <div class="spinner"></div>
+        <span>Analyzing with Stacking Classifier…</span>
+      </div>
+
+      <div class="result-panel" id="textResult">
+        <div class="result-header" id="textResultHeader">
+          <div class="verdict-badge">
+            <div class="verdict-dot"></div>
+            <div class="verdict-label" id="textVerdict">—</div>
+          </div>
+          <div>
+            <div class="confidence-display" id="textConfidence">—</div>
+            <div class="verdict-conf">confidence</div>
+          </div>
+        </div>
+        <div class="result-body">
+          <div class="score-bars">
+            <div class="score-row">
+              <div class="score-row-label fake-label">FAKE</div>
+              <div class="bar-track"><div class="bar-fill fake-bar" id="textFakeBar"></div></div>
+              <div class="bar-val" id="textFakeVal">—</div>
+            </div>
+            <div class="score-row">
+              <div class="score-row-label real-label">REAL</div>
+              <div class="bar-track"><div class="bar-fill real-bar" id="textRealBar"></div></div>
+              <div class="bar-val" id="textRealVal">—</div>
+            </div>
+          </div>
+          <div class="result-meta" id="textMeta"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- IMAGE SECTION -->
+    <div class="panel-section" id="sectionImage">
+      <div class="input-label">Upload a face image for deepfake analysis</div>
+
+      <div class="dropzone" id="dropzone"
+           onclick="document.getElementById('fileInput').click()"
+           ondragover="handleDragOver(event)"
+           ondragleave="handleDragLeave(event)"
+           ondrop="handleDrop(event)">
+        <div class="dropzone-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <h3>Drop your image here</h3>
+        <p>or <span>browse to upload</span> &nbsp;·&nbsp; JPG, PNG, WEBP up to 10MB</p>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)" />
+
+      <div class="preview-wrap" id="previewWrap">
+        <div class="preview-img-box">
+          <img id="previewImg" src="" alt="Preview" />
+          <div class="remove-img" onclick="removeImage()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <button class="analyze-btn" id="imageAnalyzeBtn" onclick="analyzeImage()" style="margin-top:20px;" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        Analyze Image
+      </button>
+
+      <div class="error-msg" id="imageError">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span id="imageErrorMsg">An error occurred</span>
+      </div>
+
+      <div class="spinner-wrap" id="imageSpinner">
+        <div class="spinner"></div>
+        <span>Analyzing with EfficientNetV2B2…</span>
+      </div>
+
+      <div class="result-panel" id="imageResult">
+        <div class="result-header" id="imageResultHeader">
+          <div class="verdict-badge">
+            <div class="verdict-dot"></div>
+            <div class="verdict-label" id="imageVerdict">—</div>
+          </div>
+          <div>
+            <div class="confidence-display" id="imageConfidence">—</div>
+            <div class="verdict-conf">confidence</div>
+          </div>
+        </div>
+        <div class="result-body">
+          <div class="score-bars">
+            <div class="score-row">
+              <div class="score-row-label fake-label">FAKE</div>
+              <div class="bar-track"><div class="bar-fill fake-bar" id="imageFakeBar"></div></div>
+              <div class="bar-val" id="imageFakeVal">—</div>
+            </div>
+            <div class="score-row">
+              <div class="score-row-label real-label">REAL</div>
+              <div class="bar-track"><div class="bar-fill real-bar" id="imageRealBar"></div></div>
+              <div class="bar-val" id="imageRealVal">—</div>
+            </div>
+          </div>
+          <div class="result-meta" id="imageMeta"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main-panel -->
+
+  <!-- ── How it works ── -->
+  <section class="how-section">
+    <div class="section-label">Under the hood</div>
+    <div class="section-title">How VeriTrust Works</div>
+    <div class="cards-grid">
+
+      <div class="info-card">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        </div>
+        <div class="card-title">Stacking Ensemble</div>
+        <div class="card-body">Three powerful classifiers — XGBoost, LightGBM, and Logistic Regression — are combined through a meta-learner for superior text classification.</div>
+        <div class="card-mono">99.6% F1-Score</div>
+      </div>
+
+      <div class="info-card">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </div>
+        <div class="card-title">TF-IDF Bigrams</div>
+        <div class="card-body">Text is vectorized into 20,000-feature bigram TF-IDF space, capturing linguistic patterns invisible to simpler bag-of-words approaches.</div>
+        <div class="card-mono">20K features</div>
+      </div>
+
+      <div class="info-card">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+        </div>
+        <div class="card-title">EfficientNetV2B2</div>
+        <div class="card-body">Pretrained on ImageNet, fine-tuned on 140K real/fake face images. Uses Global Max Pooling + Dropout for robust generalization.</div>
+        <div class="card-mono">128×128 px input</div>
+      </div>
+
+      <div class="info-card">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="card-title">Data Augmentation</div>
+        <div class="card-body">Albumentations-based augmentation — flips, rotation, brightness, gamma, random crops — makes the model robust to real-world image variations.</div>
+        <div class="card-mono">SMOTE balanced</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ── Footer ── -->
+  <footer>
+    <div class="footer-logo">Veri<span>Trust</span></div>
+    <p>Models: Stacking (Text) · EfficientNetV2B2 (Image) · For educational use only</p>
+  </footer>
+
+</div><!-- /page-wrap -->
+
+<script>
+  const API_BASE = "http://localhost:5001";
+
+  const EXAMPLES = {
+    fake1: "SHOCKING: Scientists at NASA secretly confirm that the moon landing in 1969 was entirely staged in a Hollywood studio by Stanley Kubrick. Documents leaked by a whistleblower prove the entire Apollo program was a Cold War hoax designed to beat the Soviets.",
+    real1: "The Federal Reserve raised its benchmark interest rate by a quarter of a percentage point on Wednesday, the latest in a series of increases aimed at bringing down inflation that remains well above the central bank's 2 percent target.",
+    fake2: "WAKE UP SHEEPLE: Bill Gates has been using COVID-19 vaccines to implant 5G microchips into billions of people worldwide. The global elite and the Illuminati are tracking every human being through these nanobots injected by the New World Order."
+  };
+
+  // ── Tab switching ──────────────────────────────────────────────────────────
+  function switchTab(tab) {
+    document.getElementById("sectionText").classList.toggle("active", tab === "text");
+    document.getElementById("sectionImage").classList.toggle("active", tab === "image");
+    document.getElementById("tabText").classList.toggle("active", tab === "text");
+    document.getElementById("tabImage").classList.toggle("active", tab === "image");
+  }
+
+  // ── Char count ────────────────────────────────────────────────────────────
+  function updateCharCount() {
+    const len = document.getElementById("newsText").value.length;
+    document.getElementById("charCount").textContent = len + " chars";
+  }
+
+  // ── Example loader ────────────────────────────────────────────────────────
+  function loadExample(key) {
+    document.getElementById("newsText").value = EXAMPLES[key];
+    updateCharCount();
+  }
+
+  // ── Show/hide helpers ─────────────────────────────────────────────────────
+  function showEl(id)  { document.getElementById(id).classList.add("show"); }
+  function hideEl(id)  { document.getElementById(id).classList.remove("show"); }
+  function show(el)    { el.classList.add("show"); }
+  function hide(el)    { el.classList.remove("show"); }
+
+  // ── Text analysis ─────────────────────────────────────────────────────────
+  async function analyzeText() {
+    const text = document.getElementById("newsText").value.trim();
+    hideEl("textResult");
+    hideEl("textError");
+
+    if (!text) {
+      document.getElementById("textErrorMsg").textContent = "Please enter some text to analyze.";
+      showEl("textError"); return;
+    }
+    if (text.length < 20) {
+      document.getElementById("textErrorMsg").textContent = "Text is too short. Please provide at least 20 characters.";
+      showEl("textError"); return;
+    }
+
+    document.getElementById("textAnalyzeBtn").disabled = true;
+    showEl("textSpinner");
+
+    try {
+      const res = await fetch(`${API_BASE}/api/analyze-text`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Server error");
+      }
+
+      const data = await res.json();
+      renderTextResult(data);
+
+    } catch (e) {
+      document.getElementById("textErrorMsg").textContent =
+        e.message.includes("fetch") ? "Cannot connect to backend. Make sure the server is running on port 5001." : e.message;
+      showEl("textError");
+    } finally {
+      hideEl("textSpinner");
+      document.getElementById("textAnalyzeBtn").disabled = false;
+    }
+  }
+
+  function renderTextResult(d) {
+    const isFake   = d.is_fake;
+    const cls      = isFake ? "fake" : "real";
+    const verdict  = isFake ? "FAKE NEWS" : "REAL NEWS";
+
+    document.getElementById("textVerdict").textContent    = verdict;
+    document.getElementById("textConfidence").textContent = d.confidence + "%";
+
+    const hdr = document.getElementById("textResultHeader");
+    hdr.className = "result-header " + cls;
+
+    // Bars – set to 0 first, then animate
+    const fakeBar = document.getElementById("textFakeBar");
+    const realBar = document.getElementById("textRealBar");
+    fakeBar.style.width = "0%";
+    realBar.style.width = "0%";
+    document.getElementById("textFakeVal").textContent = d.fake_score + "%";
+    document.getElementById("textRealVal").textContent = d.real_score + "%";
+
+    showEl("textResult");
+    requestAnimationFrame(() => {
+      fakeBar.style.width = d.fake_score + "%";
+      realBar.style.width = d.real_score + "%";
+    });
+
+    // Meta chips
+    document.getElementById("textMeta").innerHTML = `
+      <span class="meta-chip">Words: ${d.word_count}</span>
+      <span class="meta-chip">Model: Stacking Classifier</span>
+      <span class="meta-chip">TF-IDF: 20K features</span>
+    `;
+  }
+
+  // ── Image handling ────────────────────────────────────────────────────────
+  let currentImageB64 = null;
+
+  function handleFileSelect(e) {
+    const file = e.target.files[0];
+    if (file) loadImageFile(file);
+  }
+
+  function handleDragOver(e) {
+    e.preventDefault();
+    document.getElementById("dropzone").classList.add("drag-over");
+  }
+
+  function handleDragLeave() {
+    document.getElementById("dropzone").classList.remove("drag-over");
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById("dropzone").classList.remove("drag-over");
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith("image/")) loadImageFile(file);
+  }
+
+  function loadImageFile(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      currentImageB64 = e.target.result;
+      document.getElementById("previewImg").src = currentImageB64;
+      document.getElementById("previewWrap").classList.add("show");
+      document.getElementById("imageAnalyzeBtn").disabled = false;
+      // Reset results
+      hideEl("imageResult");
+      hideEl("imageError");
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeImage() {
+    currentImageB64 = null;
+    document.getElementById("previewImg").src = "";
+    document.getElementById("previewWrap").classList.remove("show");
+    document.getElementById("imageAnalyzeBtn").disabled = true;
+    document.getElementById("fileInput").value = "";
+    hideEl("imageResult");
+    hideEl("imageError");
+  }
+
+  // ── Image analysis ────────────────────────────────────────────────────────
+  async function analyzeImage() {
+    if (!currentImageB64) return;
+    hideEl("imageResult");
+    hideEl("imageError");
+
+    document.getElementById("imageAnalyzeBtn").disabled = true;
+    showEl("imageSpinner");
+
+    try {
+      const res = await fetch(`${API_BASE}/api/analyze-image`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: currentImageB64 })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Server error");
+      }
+
+      const data = await res.json();
+      renderImageResult(data);
+
+    } catch (e) {
+      document.getElementById("imageErrorMsg").textContent =
+        e.message.includes("fetch") ? "Cannot connect to backend. Make sure the server is running on port 5001." : e.message;
+      showEl("imageError");
+    } finally {
+      hideEl("imageSpinner");
+      document.getElementById("imageAnalyzeBtn").disabled = false;
+    }
+  }
+
+  function renderImageResult(d) {
+    const isFake  = d.is_fake;
+    const cls     = isFake ? "fake" : "real";
+    const verdict = isFake ? "DEEPFAKE" : "AUTHENTIC";
+
+    document.getElementById("imageVerdict").textContent    = verdict;
+    document.getElementById("imageConfidence").textContent = d.confidence + "%";
+
+    const hdr = document.getElementById("imageResultHeader");
+    hdr.className = "result-header " + cls;
+
+    const fakeBar = document.getElementById("imageFakeBar");
+    const realBar = document.getElementById("imageRealBar");
+    fakeBar.style.width = "0%";
+    realBar.style.width = "0%";
+    document.getElementById("imageFakeVal").textContent = d.fake_score + "%";
+    document.getElementById("imageRealVal").textContent = d.real_score + "%";
+
+    showEl("imageResult");
+    requestAnimationFrame(() => {
+      fakeBar.style.width = d.fake_score + "%";
+      realBar.style.width = d.real_score + "%";
+    });
+
+    document.getElementById("imageMeta").innerHTML = `
+      <span class="meta-chip">Model: EfficientNetV2B2</span>
+      <span class="meta-chip">Input: 128×128 px</span>
+      <span class="meta-chip">Trained: 140K+ faces</span>
+    `;
+  }
+
+  // ── Enter key for textarea ─────────────────────────────────────────────────
+  document.getElementById("newsText").addEventListener("keydown", (e) => {
+    if (e.ctrlKey && e.key === "Enter") analyzeText();
+  });
+</script>
+</body>
+</html>

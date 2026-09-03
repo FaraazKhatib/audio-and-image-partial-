@@ -1,0 +1,25 @@
+# Normalise line endings in the repository so a clone works on either platform.
+# A shell script checked out with CRLF fails with "bad interpreter", and a batch file checked out
+# with LF misbehaves in cmd, so both are pinned rather than left to the local core.autocrlf.
+* text=auto
+
+*.sh text eol=lf
+*.bat text eol=crlf
+
+*.py text
+*.js text
+*.css text
+*.html text
+*.json text
+*.md text
+
+*.onnx binary
+*.hdf5 binary
+*.pkl binary
+*.pt binary
+*.pth binary
+*.safetensors binary
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.webp binary
