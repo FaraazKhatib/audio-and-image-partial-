@@ -11,7 +11,6 @@ import io
 from dataclasses import dataclass
 
 import numpy as np
-from PIL import Image, ImageOps
 
 from .config import ALLOWED_MIME, Settings
 
@@ -118,23 +117,3 @@ def to_numpy(image: Image.Image) -> np.ndarray:
     return np.asarray(image, dtype=np.uint8)
 
 
-def crop_with_margin(
-    image: Image.Image,
-    box: tuple[int, int, int, int],
-    margin: float,
-) -> Image.Image:
-    """Expand a box outward by margin and crop, clamped to image bounds.
-
-    Face forgery cues concentrate at the blend boundary, which sits outside a tight face
-    box, so the margin is load bearing rather than cosmetic.
-    """
-    x1, y1, x2, y2 = box
-    w, h = x2 - x1, y2 - y1
-    dx, dy = int(w * margin), int(h * margin)
-    x1 = max(0, x1 - dx)
-    y1 = max(0, y1 - dy)
-    x2 = min(image.width, x2 + dx)
-    y2 = min(image.height, y2 + dy)
-    if x2 <= x1 or y2 <= y1:
-        raise ImageRejected("Degenerate crop box.")
-    return image.crop((x1, y1, x2, y2))

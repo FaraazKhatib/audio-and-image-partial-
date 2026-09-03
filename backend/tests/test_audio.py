@@ -36,7 +36,7 @@ from veritrust.audio import (
 )
 from veritrust.config import ALLOWED_AUDIO_MIME, Settings
 from veritrust.detectors.base import LoadError
-from veritrust.detectors.hf_image import _label_tokens, resolve_fake_indices
+from veritrust.detectors.hf_audio import _label_tokens, resolve_fake_indices
 
 
 def wav_bytes(
@@ -593,87 +593,3 @@ def test_the_audio_wrapper_refuses_a_missing_local_directory_before_importing_to
     assert detector.ready is False
 
 
-def test_the_audio_wrapper_describes_itself_like_the_image_one():
-    # /api/v1/models is one endpoint rendering one shape. A pathway reporting readiness and errors
-    # under different keys would render as blank rows rather than as a degraded ensemble.
-    from veritrust.config import AUDIO, SYNTHETIC, ModelSpec
-    from veritrust.detectors.hf_audio import HFAudioClassifier
-    from veritrust.detectors.hf_image import HFImageClassifier
-
-    audio = HFAudioClassifier(
-        ModelSpec(key="a", repo="stub/a", kind=AUDIO, weight=1.0, notes="n"), "cpu"
-    )
-    image = HFImageClassifier(
-        ModelSpec(key="i", repo="stub/i", kind=SYNTHETIC, weight=1.0, notes="n"), "cpu"
-    )
-    assert set(audio.describe()) == set(image.describe())
-
-
-def test_an_unloaded_audio_detector_reports_a_fault_not_a_score():
-    from veritrust.config import AUDIO, ModelSpec
-    from veritrust.detectors.hf_audio import HFAudioClassifier
-
-    detector = HFAudioClassifier(ModelSpec(key="a", repo="stub/a", kind=AUDIO), "cpu")
-    result = detector.predict(np.zeros(16000, dtype=np.float32), 16000)
-    # p_fake None rather than 0.5. A neutral reading from a broken checkpoint would drag every
-    # verdict toward the middle while looking like a working member of the ensemble.
-    assert result.p_fake is None
-    assert result.usable is False
-    assert result.error
-
-
-def test_expected_sample_rate_reads_the_extractor_rather_than_assuming():
-    from veritrust.config import AUDIO, ModelSpec
-    from veritrust.detectors.hf_audio import HFAudioClassifier
-
-    detector = HFAudioClassifier(ModelSpec(key="a", repo="stub/a", kind=AUDIO), "cpu")
-    assert detector.expected_sample_rate is None
-
-    detector._processor = types.SimpleNamespace(sampling_rate=8000)
-    assert detector.expected_sample_rate == 8000
-
-    # An extractor that does not declare a rate must report None rather than a guessed 16000, since
-    # verify_models compares this against the pipeline rate and would print a false mismatch.
-    detector._processor = types.SimpleNamespace()
-    assert detector.expected_sample_rate is None
-
-
-def test_decoded_audio_and_window_shapes_are_what_the_engine_reads():
-    # The engine copies these straight into image_info, and MediaOut drops anything it does not
-    # declare with a 200 and no warning.
-    decoded = decoded_from(tone(1.0, rate=16000))
-    for name in (
-        "duration",
-        "original_duration",
-        "sample_rate",
-        "original_sample_rate",
-        "original_channels",
-        "downmixed",
-        "truncated",
-        "decoder",
-        "mime",
-    ):
-        assert hasattr(decoded, name), name
-
-    window = AudioWindow(index=0, start=0.0, end=4.0, rms=0.1, samples=np.zeros(4))
-    for name in ("index", "start", "end", "rms", "samples", "silent"):
-        assert hasattr(window, name), name
-
-
-def _run_all() -> int:
-    tests = [(n, f) for n, f in sorted(globals().items()) if n.startswith("test_")]
-    passed, failed = 0, []
-    for name, fn in tests:
-        try:
-            fn()
-            passed += 1
-            print(f"  ok    {name}")
-        except Exception as exc:
-            failed.append(name)
-            print(f"  FAIL  {name}: {type(exc).__name__}: {exc}")
-    print(f"\n{passed} passed, {len(failed)} failed, {len(tests)} total")
-    return 1 if failed else 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(_run_all())

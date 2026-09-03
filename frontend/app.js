@@ -330,7 +330,7 @@ dom.run.addEventListener("click", async () => {
 /* ---------- rendering ---------- */
 
 function render(data) {
-  if (modalityOf(data) === "audio") {
+  if (data.score_ai !== undefined) {
     data.signals = [{
       name: "Audio Ensemble",
       p_ai: data.score_ai,
@@ -340,7 +340,7 @@ function render(data) {
       detail: "Average fusion score"
     }];
   }
-  
+
   dom.readoutEmpty.hidden = true;
   dom.report.hidden = false;
 
@@ -387,13 +387,6 @@ function renderMediaMeta(data) {
    tab. The server decides modality from the file header, so the tab can be wrong: an audio file
    whose type the browser did not declare is sent from whichever tab was open, and taking the
    wording from the tab would put "photograph" in the headline of an audio verdict. */
-function modalityOf(data) {
-  const mime = (data.image && data.image.mime) || "";
-  if (mime.startsWith("audio/")) return "audio";
-  if (mime.startsWith("image/")) return "image";
-  return currentMode;
-}
-
 /* The API reports two different situations as the same word. A flat uncertain means nothing was
    decisive. An escalated uncertain means one check was decisive and the rest outvoted it, which is
    the more useful fact and used to be visible only in the notes. */
@@ -573,23 +566,6 @@ function renderSignals(data) {
     : base;
 }
 
-function renderProvenance(prov) {
-  dom.evidence.innerHTML = "";
-  const strong = prov.c2pa_ai_declared || (prov.generators && prov.generators.length > 0);
-
-  (prov.evidence || []).forEach((line) => {
-    const item = document.createElement("li");
-    item.textContent = line;
-    if (strong && /references|declares|generation metadata|C2PA manifest/i.test(line)) {
-      item.dataset.strong = "true";
-    }
-    dom.evidence.appendChild(item);
-  });
-
-  if (!dom.evidence.children.length) {
-    dom.evidence.innerHTML = "<li>No metadata read from this file.</li>";
-  }
-}
 
 function renderNotes(notes, errors) {
   dom.notes.innerHTML = "";
@@ -606,65 +582,6 @@ function renderNotes(notes, errors) {
   dom.notesPanel.hidden = dom.notes.children.length === 0;
 }
 
-function renderOverlay(data) {
-  dom.boxes.innerHTML = "";
-
-  const width = dom.preview.naturalWidth;
-  const height = dom.preview.naturalHeight;
-  const analysed = data.image;
-  const faces = data.faces || [];
-  const decided = data.overridden_by === FACE_PATHWAY;
-
-  faces.forEach((face) => {
-    const scaleX = analysed.width ? width / analysed.width : 1;
-    const scaleY = analysed.height ? height / analysed.height : 1;
-
-    const box = document.createElement("div");
-    box.className = "face-box";
-    box.dataset.band = bandOf(face.p_ai);
-    box.title =
-      `Face ${face.index + 1} read ${face.p_ai.toFixed(2)} by the face model on this crop alone. ` +
-      (decided
-        ? `The strongest face reading set the verdict for the whole image.`
-        : `The colour is that reading, not the verdict for the whole image.`);
-    box.style.left = `${((face.x * scaleX) / width) * 100}%`;
-    box.style.top = `${((face.y * scaleY) / height) * 100}%`;
-    box.style.width = `${((face.w * scaleX) / width) * 100}%`;
-    box.style.height = `${((face.h * scaleY) / height) * 100}%`;
-    box.innerHTML = `<span class="face-tag">face ${face.index + 1} · ${face.p_ai.toFixed(2)}</span>`;
-    dom.boxes.appendChild(box);
-  });
-
-  /* This note has to track the fusion setting. It used to say a red face does not settle the whole
-     image, which is the opposite of what happens while VT_FACE_DECIDES is on. The third branch
-     matters too: under a provenance override a green box can sit under an AI headline, and telling
-     the reader the checks came to that together would be false. */
-  function faceNote() {
-    if (decided) {
-      return (
-        `The strongest reading here decided the verdict outright and the whole image checks were ` +
-        `overruled, so a face outside those bands settles the image on its own.`
-      );
-    }
-    if (data.overridden_by) {
-      return (
-        `The verdict above was set by ${prettyName(data.overridden_by)}, which outranks every model ` +
-        `reading, so none of these boxes decided it and a box may well disagree with it.`
-      );
-    }
-    return `No single face settled this one, and the verdict above is what the checks came to together.`;
-  }
-
-  dom.overlayNote.textContent = faces.length
-    ? `Box colour is each face on its own, against the same ${thresholds.authentic_max} and ` +
-      `${thresholds.ai_min} bands as the verdict. ${faceNote()}`
-    : "";
-
-  if (data.heatmap) {
-    dom.heat.src = data.heatmap;
-    dom.toggleHeat.hidden = false;
-  }
-}
 
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (char) => ({

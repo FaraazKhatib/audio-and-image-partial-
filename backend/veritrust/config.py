@@ -38,11 +38,9 @@ def _env_bool(name: str, default: bool) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
-SYNTHETIC = "synthetic"
-FACE = "face"
 AUDIO = "audio"
 
-MODEL_KINDS = (SYNTHETIC, FACE, AUDIO)
+MODEL_KINDS = (AUDIO,)
 """Kinds that are statistical estimates from a checkpoint, as opposed to read evidence.
 
 fusion.py uses this to decide what may escalate a verdict and what counts toward the disagreement
@@ -93,35 +91,6 @@ class ModelSpec:
     confident nonsense. Set this only after confirming the order against known samples.
     """
 
-
-SYNTHETIC_MODELS: tuple[ModelSpec, ...] = (
-    ModelSpec(
-        key='vit_v2_deepfake',
-        repo='dima806/deepfake_vs_real_image_detection',
-        kind=SYNTHETIC,
-        weight=1.0,
-        fallbacks=(),
-        gradcam_target='vit.layernorm',
-        notes=(
-            'ViT real-vs-generated detector. Its model card warns that its training data is about '
-            'three years old; treat scores on current generators as uncalibrated until evaluated locally.'
-        ),
-    ),
-)
-
-FACE_MODELS: tuple[ModelSpec, ...] = (
-    ModelSpec(
-        key='efficientnet_ffpp',
-        repo='Xicor9/efficientnet-b0-ffpp-c23',
-        kind=FACE,
-        weight=1.0,
-        fallbacks=(),
-        notes=(
-            'FaceForensics++ C23 face-crop detector. It targets face manipulation rather than '
-            'whole-image generation and is not calibrated for this deployment.'
-        ),
-    ),
-)
 
 # Seven checkpoints spanning three architecture families, on the same reasoning as the image
 # ensemble: wav2vec2 fine-tunes, WavLM fine-tunes and an Audio Spectrogram Transformer read
@@ -226,7 +195,7 @@ AUDIO_MODELS: tuple[ModelSpec, ...] = (
     ),
 )
 
-BUILTIN_MODELS: tuple[ModelSpec, ...] = SYNTHETIC_MODELS + FACE_MODELS + AUDIO_MODELS
+BUILTIN_MODELS: tuple[ModelSpec, ...] = AUDIO_MODELS
 
 
 def _coerce_local_spec(entry: dict) -> ModelSpec:
@@ -237,7 +206,7 @@ def _coerce_local_spec(entry: dict) -> ModelSpec:
 
     key = str(entry["key"]).strip()
     raw_path = str(entry["path"]).strip()
-    kind = str(entry.get("kind", SYNTHETIC)).strip().lower()
+    kind = str(entry.get("kind", AUDIO)).strip().lower()
     if kind not in MODEL_KINDS:
         allowed = ", ".join(repr(k) for k in MODEL_KINDS)
         raise ValueError(f"{key}: kind must be one of {allowed}, got {kind!r}")
@@ -305,15 +274,10 @@ def load_local_specs(path: Path = LOCAL_MODELS_PATH) -> tuple[tuple[ModelSpec, .
 
 LOCAL_SPECS, LOCAL_SPEC_PROBLEMS = load_local_specs()
 
-LOCAL_SYNTHETIC_MODELS: tuple[ModelSpec, ...] = tuple(s for s in LOCAL_SPECS if s.kind == SYNTHETIC)
-LOCAL_FACE_MODELS: tuple[ModelSpec, ...] = tuple(s for s in LOCAL_SPECS if s.kind == FACE)
 LOCAL_AUDIO_MODELS: tuple[ModelSpec, ...] = tuple(s for s in LOCAL_SPECS if s.kind == AUDIO)
 
-ALL_SYNTHETIC_MODELS: tuple[ModelSpec, ...] = SYNTHETIC_MODELS + LOCAL_SYNTHETIC_MODELS
-ALL_FACE_MODELS: tuple[ModelSpec, ...] = FACE_MODELS + LOCAL_FACE_MODELS
-ALL_AUDIO_MODELS: tuple[ModelSpec, ...] = AUDIO_MODELS + LOCAL_AUDIO_MODELS
+ALL_MODELS: tuple[ModelSpec, ...] = AUDIO_MODELS + LOCAL_AUDIO_MODELS
 
-ALL_MODELS: tuple[ModelSpec, ...] = ALL_SYNTHETIC_MODELS + ALL_FACE_MODELS
 """The image ensemble only, deliberately excluding audio.
 
 Everything in here is loaded by HFImageClassifier. Audio checkpoints need a different Auto class and
@@ -334,7 +298,6 @@ FAKE_LABEL_TOKENS = (
     "ai",
     "artificial",
     "generated",
-    "synthetic",
     "deepfake",
     "spoof",
     "manipulated",

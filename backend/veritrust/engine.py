@@ -22,7 +22,6 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass, field
 
-from PIL import Image
 
 from . import provenance
 from .config import (
@@ -93,8 +92,7 @@ class Engine:
     def __init__(self, settings: Settings | None = None):
         self.settings = settings or default_settings
         self.registry = Registry(self.settings)
-        self.face_detector = FaceDetector(self.settings)
-        self.calibration = Calibration()
+                self.calibration = Calibration()
 
     def load(self) -> None:
         self.registry.load_all()
@@ -114,11 +112,11 @@ class Engine:
             },
         }
 
-    def analyze(self, data: bytes, want_heatmap: bool = True) -> Analysis:
+    def analyze(self, data: bytes, want_heatmap: bool = False) -> Analysis:
         audio_mime = sniff_audio_mime(data)
-        if audio_mime is not None:
-            return self._analyze_audio(data)
-        return self._analyze_image(data, want_heatmap)
+        if audio_mime is None:
+            raise ValueError("Only audio files are supported.")
+        return self._analyze_audio(data)
 
     def _analyze_audio(self, data: bytes) -> Analysis:
         timing: dict[str, float] = {}

@@ -25,9 +25,142 @@ from pathlib import Path
 
 import numpy as np
 
-from ..config import ModelSpec
+from ..config import FAKE_LABEL_TOKENS, REAL_LABEL_TOKENS, ModelSpec
+import json
+import re
 from .base import Detector, DetectorResult, LoadError
-from .hf_image import describe_checkpoint, resolve_fake_indices
+
+MIN_PREFIX = 3
+"""Shortest token allowed to match a vocabulary entry by prefix rather than exactly.
+
+Two characters is too short to be evidence. "ai" as a substring appears inside "painting",
+"chair" and "brain", so a label like "real_painting" would resolve as generated.
+"""
+
+
+def _label_tokens(label: str) -> list[str]:
+    """Split a class label into lowercase tokens, treating camelCase boundaries as separators.
+
+    Punctuation and underscores are the obvious separators. camelCase has to count too, because
+    Hemgg/Deepfake-audio-detection labels its classes AIVoice and HumanVoice: without the split
+    those are single tokens, "ai" is too short to match by prefix and too different to match
+    exactly, and the checkpoint is refused as unresolvable. The alternative was setting fake_index
+    to 0 on that spec, which is the index position assumption this project removed once already.
+
+    Two boundaries are needed. The lower-to-upper one splits HumanVoice. The upper-to-upper-lower
+    one splits AIVoice, where three capitals run together and the break belongs before the last of
+    them. Verified against every checkpoint currently declared: no image label tokenises differently
+    under this than under plain punctuation splitting.
+    """
+    spaced = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", str(label))
+    spaced = re.sub(r"(?<=[A-Z])(?=[A-Z][a-z])", " ", spaced)
+    return [t for t in re.split(r"[^a-z0-9]+", spaced.strip().lower()) if t]
+
+
+def _matches(tokens: list[str], vocabulary: tuple[str, ...]) -> str | None:
+    """Return the vocabulary entry a label token corresponds to, or None.
+
+    Matching is exact, or by prefix in either direction once both sides are long enough. The
+    outward direction catches inflections such as "fakes"; the inward direction catches the
+    truncations checkpoints actually ship, for example Ateeqq/ai-vs-human-image-detector labelling
+    its real class "hum". Substring matching anywhere in the token is deliberately not used.
+    """
+    for token in tokens:
+        for word in vocabulary:
+            if token == word:
+                return word
+            if len(token) >= MIN_PREFIX and len(word) >= MIN_PREFIX:
+                if token.startswith(word) or word.startswith(token):
+                    return word
+    return None
+
+
+def resolve_fake_indices(id2label: dict[int, str]) -> tuple[list[int], str]:
+    """Return indices whose label denotes generated content, plus a human readable mapping.
+
+    Handles more than two classes by summing every generated-ish class, which covers
+    checkpoints that split fake into per generator classes.
+
+    A label matching both vocabularies is refused rather than resolved by which side was checked
+    first, since "which list did I search first" is not evidence about the class.
+    """
+    fake: list[int] = []
+    real: list[int] = []
+    unmatched: list[str] = []
+
+    for idx, raw in id2label.items():
+        tokens = _label_tokens(raw)
+        as_fake = _matches(tokens, FAKE_LABEL_TOKENS)
+        as_real = _matches(tokens, REAL_LABEL_TOKENS)
+
+        if as_fake and as_real:
+            raise LoadError(
+                f"Label {raw!r} reads as both {as_fake!r} and {as_real!r}, so it is ambiguous. "
+                f"Full mapping {dict(id2label)}."
+            )
+        if as_fake:
+            fake.append(int(idx))
+        elif as_real:
+            real.append(int(idx))
+        else:
+            unmatched.append(f"{idx}={raw}")
+
+    if not fake or not real:
+        detail = f" Unrecognised: {', '.join(unmatched)}." if unmatched else ""
+        raise LoadError(
+            f"Could not tell which class means generated from labels {dict(id2label)}.{detail} "
+            f"Set fake_index on the ModelSpec after verifying the order against known samples."
+        )
+
+    mapping = ", ".join(f"{i}={id2label[i]}" for i in sorted(id2label))
+    return fake, mapping
+
+
+def load_processor(repo: str):
+    """Load a checkpoint's image processor, preferring the fast implementation.
+
+    transformers routes the fast path through torchvision, so a missing torchvision raises
+    ImportError for every checkpoint rather than degrading. The slow processor is PIL based and
+    produces equivalent tensors, just slower, which beats refusing to load at all. Installing
+    torchvision is still the right fix; this only stops one absent optional backend from taking
+    the whole ensemble down.
+    """
+    from transformers import AutoImageProcessor
+
+    try:
+        return AutoImageProcessor.from_pretrained(repo)
+    except ImportError:
+        return AutoImageProcessor.from_pretrained(repo, use_fast=False)
+
+
+def describe_checkpoint(repo: str, head: str = "image classification head") -> str:
+    """Report what a local checkpoint claims to be, for use in failure messages.
+
+    A private checkpoint that is not an image classifier fails inside from_pretrained with an error
+    that rarely names the actual architecture. Reading config.json directly turns "could not load"
+    into something actionable, and it costs nothing because the file is small and local.
+
+    head is what the caller expected to find, so the audio wrapper can reuse this rather than keep
+    its own near identical copy. Nothing else about the report differs by modality.
+    """
+    config = Path(repo) / "config.json"
+    if not config.is_file():
+        return ""
+    try:
+        payload = json.loads(config.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return ""
+
+    architectures = payload.get("architectures") or []
+    model_type = payload.get("model_type") or "unknown"
+    labels = payload.get("id2label") or {}
+    described = ", ".join(str(a) for a in architectures) if architectures else "none declared"
+    return (
+        f" The checkpoint declares model_type={model_type}, architectures=[{described}], "
+        f"{len(labels)} label(s). If that is not an {head}, it needs its own "
+        f"detector wrapper rather than this one."
+    )
+
 
 AUDIO_HEAD = "audio classification head"
 

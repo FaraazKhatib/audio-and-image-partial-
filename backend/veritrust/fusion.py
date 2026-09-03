@@ -240,43 +240,6 @@ def _prior_weight(signal: Signal, cfg: FusionConfig) -> float:
     return signal.weight * _kind_weight(signal.kind, cfg)
 
 
-def _decisive_face(
-    signals: list[Signal], thresholds: Thresholds, cfg: FusionConfig
-) -> list[Signal] | None:
-    """The face pathway signal when face_decides lets it settle the verdict by itself.
-
-    Decisive means outside the uncertain band in either direction, which is exactly the condition
-    that gives the face box a colour in the UI. A reading inside the band gets no special treatment
-    and falls through to ordinary fusion. The raw reading is tested rather than the clamped one,
-    because this asks what the detector claimed, and clamping exists to limit what a claim is worth
-    when averaged rather than to soften the claim itself.
-
-    A muted face weight disables this, since a zero weight is an operator instruction to ignore the
-    detector entirely and handing it the whole verdict would be the opposite of that.
-
-    In the AI direction, a whole image detector that strongly reads authentic (below authentic_max)
-    vetoes the override. A real face swap does not alter the pixels outside the face region, so a
-    whole image detector has no reason to read authentic on one. When it does, the face model is
-    more likely wrong than right, and falling through to fusion lets the ensemble weigh in rather
-    than handing the verdict to a single uncalibrated model that the config itself describes as
-    partly dataset specific. The authentic direction keeps no such requirement, because a low face
-    reading on a flagged whole image is evidence of the same kind, not a contradiction.
-    """
-    if not cfg.face_decides:
-        return None
-    faces = [s for s in signals if s.kind == FACE and _prior_weight(s, cfg) > 0]
-    if not faces:
-        return None
-        
-    face_p = sum(s.p_fake for s in faces) / len(faces)
-    
-    if face_p <= thresholds.authentic_max:
-        return faces
-    if face_p >= thresholds.ai_min:
-        return faces
-    return None
-
-
 def _face_verdict(
     faces: list[Signal],
     signals: list[Signal],

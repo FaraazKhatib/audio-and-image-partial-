@@ -15,17 +15,13 @@ readings are genuinely separate observations even when the checkpoint is shared.
 from __future__ import annotations
 
 from ..config import (
-    ALL_FACE_MODELS,
-    ALL_SYNTHETIC_MODELS,
-    ALL_AUDIO_MODELS,
+    ALL_MODELS,
     LOCAL_SPEC_PROBLEMS,
     ModelSpec,
     Settings,
 )
 from .base import LoadError
-from .hf_image import HFImageClassifier
 from .hf_audio import HFAudioClassifier
-from .torch_image import TorchImageClassifier, uses_raw_torch_checkpoint
 
 
 class Registry:
@@ -90,13 +86,13 @@ class Registry:
         return loaded
 
     def load_all(self) -> None:
-        self.synthetic = self._build(ALL_SYNTHETIC_MODELS)
-        self.face = self._build(ALL_FACE_MODELS)
+        self.synthetic = self._build([])
+        self.face = self._build([])
         # A fresh claimed map per call is what makes deduplication per pathway. Audio shares the
         # rule but never the map: no audio checkpoint can collide with an image one anyway, since
         # they load through different auto classes.
         if self.settings.enable_audio:
-            self.audio = self._build(ALL_AUDIO_MODELS, factory=HFAudioClassifier)
+            self.audio = self._build(ALL_MODELS, factory=HFAudioClassifier)
 
     @property
     def any_ready(self) -> bool:
